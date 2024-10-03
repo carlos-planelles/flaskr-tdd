@@ -1,9 +1,8 @@
-import os
 from flask import json
 import pytest
 from pathlib import Path
 
-from project.app import app, db, search
+from project.app import app, db, login_required, search
 
 TEST_DB = "test.db"
 
@@ -72,7 +71,6 @@ def test_messages(client):
         data=dict(title="<Hello>", text="<strong>HTML</strong> allowed here"),
         follow_redirects=True,
     )
-    print(rv.data)
     assert b"No entries here so far" not in rv.data
     assert b"&lt;Hello&gt;" in rv.data
     assert b"<strong>HTML</strong> allowed here" in rv.data
@@ -103,6 +101,25 @@ def test_search(client):
         query_string=dict(query="HTML"),
         follow_redirects=True,
     )
-    print(rv.data)
     assert b"&lt;Hello&gt;" in rv.data
     assert b"<strong>HTML</strong> allowed here" in rv.data
+
+
+def test_login_required(client):
+    """Test login required decorator"""
+    login(client, app.config["USERNAME"], app.config["PASSWORD"])
+    rv = client.post(
+        "/add",
+        data=dict(title="<Hello>", text="<strong>HTML</strong> allowed here"),
+        follow_redirects=True,
+    )
+    logout(client)
+    assert b"&lt;Hello&gt;" in rv.data
+    rv = client.get(
+        "/delete/1",
+        follow_redirects=True,
+    )
+    assert b"Please log in" in rv.data
+    assert rv.status_code == 401
+    rv = client.get("/")
+    assert b"&lt;Hello&gt;" in rv.data
