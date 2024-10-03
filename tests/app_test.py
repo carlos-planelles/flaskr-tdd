@@ -3,7 +3,7 @@ from flask import json
 import pytest
 from pathlib import Path
 
-from project.app import app, db
+from project.app import app, db, search
 
 TEST_DB = "test.db"
 
@@ -87,3 +87,22 @@ def test_delete_message(client):
     rv = client.get("/delete/1")
     data = json.loads(rv.data)
     assert data["status"] == 1
+
+
+def test_search(client):
+    """Ensure that search returns matching results"""
+    # Add a post to return
+    login(client, app.config["USERNAME"], app.config["PASSWORD"])
+    rv = client.post(
+        "/add",
+        data=dict(title="<Hello>", text="<strong>HTML</strong> allowed here"),
+        follow_redirects=True,
+    )
+    rv = client.get(
+        "/search",
+        query_string=dict(query="HTML"),
+        follow_redirects=True,
+    )
+    print(rv.data)
+    assert b"&lt;Hello&gt;" in rv.data
+    assert b"<strong>HTML</strong> allowed here" in rv.data
